@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+
+<body>
+  <script src="../jslib/monad.js"></script>
+  <script src="../jslib/funcTools.js"></script>
+  <script src="../jslib/mt.js"></script>
+  <script>
+    const M = Monad.M;
+    const MIO = Monad.MIO;
+    const Maybe = Monad.Maybe;
+    const Just = Monad.Just;
+    const Nothing = Monad.Nothing;
+    const Raise = Monad.Raise;
+    const Pair = Monad.Pair;
+    const State = Monad.State;
+    const IO = Monad.IO;
+    const tee = Monad.monadicFunc.tee;
+    const ioDate = Monad.monadicFunc.ioDate;
+
+    const Y = funcTools.Y;
+    const recursive = funcTools.recursive;
+    const recursiveExtender = funcTools.recursiveExtender;
+    const memoize = funcTools.memoize;
+    const trace = funcTools.trace;
+    const composite = funcTools.composite;
+
+    const G = funcTools.G;
+
+    const print = Monad.monadicFunc.ioAction(console.log) // Monad.monadicFunc.ioPrint;
+
+
+    console.log([...G.take(10)(G.nest(n => n + 1)(0))])
+
+    /** safeDivBy:: Real -> Real -> Maybe[Real]
+     * 
+    */
+    const safeDivBy = y => x => (y !== 0) ?
+      Just.return(x / y) :
+      Raise.return("Divided by 0");
+
+    /** positiveInt:: Real -> Maybe[Int]
+     * 
+    */
+    const positiveInt = x => (x >= 0) ?
+      Just.return(parseInt(x)) :
+      Raise.return("Negative number");
+
+
+    const id = x => x;
+
+    /** 
+     * Real -> Real -> Real
+    */
+    const add = x => y => x + y;
+    const mul = x => y => x * y;
+
+
+
+
+
+    /** recursiveTemplate
+     *   f -> g(a,f) 
+     *  (Int -> Maybe[Int]) -> Int -> Maybe[Int]
+     */
+    const factorialBase = (n, a) => positiveInt(n).fmap(
+      n => (n === 0) ?
+        1 :
+        n * a(n - 1).value()
+    )
+
+
+    const fibBase = (n, a) => positiveInt(n).fmap(
+      n => (n < 2) ?
+        n :
+        a(n - 1).value() + a(n - 2).value()
+    )
+
+    // safeFactorial: Number -> Maybe[Int]
+    const safeFactorial = Y(
+      composite(
+        recursiveExtender(trace),
+        recursiveExtender(memoize({}))
+      )(recursive(factorialBase))
+    );
+
+    // safeFib: Number -> Maybe[Int]
+    const safeFib = Y(
+      composite(
+        recursiveExtender(trace),
+        recursiveExtender(memoize({}))
+      )(recursive(fibBase))
+    )
+
+
+    ioDate([])
+      .bind(print)
+
+    IO.return(
+      _ => ["divide", Maybe.return(42)
+        .bind(safeDivBy(7))
+        .fmap(add(2))]
+    )
+      .bind(print)
+
+
+    IO.return(_ => [
+      "divide by 0",
+      Maybe.return(42)
+        .bind(safeDivBy(0))
+        .fmap(add(2))
+        .fmap(add(2))
+    ]
+    )
+      .bind(print)
+
+
+    print(
+      [
+        "factorial",
+        ...[-1, 0, 1, 2, 3, 4, 5, 6].map(
+          x => Maybe.return(x)
+            .bind(safeFactorial)
+            .bind(id)
+        )
+      ]
+    ).done()
+
+
+    IO.return(_ => [
+      "fib",
+      ...[-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
+        x => Maybe.return(x)
+          .bind(safeFib)
+          .bind(id)
+      )
+    ])
+      .bind(print)
+
+    IO.return(_ => ["Hi,", "Hey,", "Ya,"].map(a => composite(s => s + " world", s => s + " hello")(a))
+    ).bind(print)
+
+
+    const connect = s => t => s + t + ""
+    /*
+     connect <$> ioDate([]) <*> ioDate([]) >>= print
+
+     ( fmap connect ioDate([]) ) <*> ioDate([])
+
+     apply(fmap connect ioDate([])) ioDate([])
+    
+     ioDate([]).apply(ioDate([]).fmap(connect))
+    */
+
+    M.bind(
+      M.apply(
+        M.fmap(connect)(ioDate([]))
+      )(ioDate([]))
+    )(print)
+
+    ioDate([])
+      .apply(ioDate([]).fmap(connect))
+      .bind(print)
+
+    ioDate([])
+      .apply(M.fmap(connect)(ioDate([])))
+      .bind(print)
+
+
+    /* State: state of random generator */
+    // rGen:: Int -> 
+    const rGen = seed => new MersenneTwister(seed);
+
+    // random:: g -> ([a], g)
+    const randomList = g => Pair.cons([g.next()], g)
+
+    // addCoin:: [a] -> State(g -> ([b], g))
+    const pushRandom = a => State.state(
+      g => {
+        a.push(g.next());
+        return Pair.cons(a, g);
+      }
+    )
+
+    // [] -> State(s -> ([],s))
+    // oneCoin:: State g -> ([a], g)
+    // twoCoins, threeCoins:: (a -> State s b) -> State s a -> State s b
+    const oneCoin = State.state(randomList);
+    const twoCoins = oneCoin.bind(pushRandom)
+    const threeCoins = twoCoins.bind(pushRandom)
+
+    console.log(
+      "one coin",
+      State.runState(oneCoin)(rGen(100))({ cons: (l, r) => l }),
+      "two coins",
+      State.runState(twoCoins)(rGen(100))({ cons: (l, r) => l }),
+      "three coins",
+      State.runState(threeCoins)(rGen(100))({ cons: (l, r) => l }),
+      State.runState(
+        threeCoins
+          .fmap(a => a.map(v => (v > 0.5) ? true : false))
+      )(rGen(100))({ cons: (l, r) => l })
+    )
+
+    console.log(
+      "overwrite state",
+      State.runState(State.return().put([3, 4, 5]))([1, 2, 3])({ cons: (a, s) => s }),
+      "read current state",
+      State.runState(State.return().put([3, 4, 5]).get())([1, 2, 3])({ cons: (a, s) => s }),
+    )
+
+    class Stack extends Monad.State {
+      constructor(f) {
+        super(f)
+      }
+
+
+      push(a) {
+        return State.state(s => {
+          const as = this.value(s)({ cons: (a, s) => s });
+          const newState = as.push(a);
+          return this.put(newState)
+        })
+      }
+
+
+    }
+
+    const stack = Stack.return()
+    console.log(
+      State.runState(
+        stack.push(3)
+      )([])({ cons: (a, s) => s })
+    )
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="js">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" type="text/css" href="./css/app.css"></link>
+
+  <title>Document</title>
+
+</head>
+
+
+<body>
+  <div id="header">
+    <div id="tab_contour" class="tab  active">
+      Edit contour
+    </div>
+    <div id="tab_viewer" class="tab">
+      3D view
+    </div>
+  </div>
+
+  <div id="app_wrapper">
+    <div id="contour_editor" class="window active">
+      <div id="editor_layer_wrapper">
+        <!--canvas id="editor_${n}" class="editor_layer"-->
+      </div>
+      <div id="editor_controller">
+        <div id="editor_controller_console">
+          <input id="button_add_spline" type="button" value="add spline">
+          <input id="button_to_heightmap" type="button" value="height map">
+        </div>
+
+        <div id="editor_controller_wrapper">
+          <!--div id="controller_${n}" class="layer_controller" -->
+        </div>
+      </div>
+    </div>
+
+    <div id="viewer" class="window ">
+      <div id="ui_top_3d" class="top">
+        <div id="app_mode_controller">
+          <input id="button_to_start" type="button" value="start">
+          <input id="button_to_stop" type="button" value="stop">
+        </div>
+
+        <div id="camera_controller">
+          <input id="button_to_tps" type="button" value="Orbit">
+          <input id="button_to_fps" type="button" value="FPS">
+        </div>
+      </div>
+
+      <div id="viewer_3d">
+        <canvas id="viewer_area" width="1200" height="900"></canvas>
+      </div>
+
+    </div>
+  </div>
+  <script src="../jslib/pub_sub.js"></script>
+  <script src="../jslib/dom_toggler.js"></script>
+  <script src="../jslib/monad.js"></script>
+  <script src="../jslib/funcTools.js"></script>
+  <script src="../jslib/d3.v5.min.js"></script>
+  <script src="../three.js-master/build/three.min.js"></script>
+  <script src="../three.js-master/examples/js/controls/OrbitControls.js"></script>
+  <script src="../three.js-master/examples/js/controls/FirstPersonControls.js"></script>
+  <script src="./js/camera.js"></script>
+  <script src="./js/geometry.js"></script>
+  <script src="./js/sceneHandler.js"></script>
+  <script src="./js/eventHandler.js"></script>
+  <script src="./js/spline_editor.js"></script>
+  <script>
+    const { ToggleElement, ExclusiveStateElement } = Toggle;
+    const { Publisher, Subscriber } = PubSub;
+    // SplineEditor;
+
+    const uiState = {
+      "stopLoop": false,
+      "cameraMode": "TPS",
+      "cameraChanged": false,
+      "cameraSetting": {
+        width: document.getElementById("viewer_area").width,
+        height: document.getElementById("viewer_area").height,
+        fov: 60,
+        near: 1,
+        far: 2000
+      },
+      "canvas_3d": document.getElementById("viewer_area"),
+      "editor": {
+        "canvas": {
+          "wrapperId": "editor_layer_wrapper",
+          "idPrefix": "editor_",
+          "width": 900,
+          "height": 900
+        },
+        "controller": {
+          "wrapperId": "editor_controller_wrapper",
+          "idPrefix": "controller_"
+        },
+        "contour_interval": {
+          "value": 100,
+          "unit": "meter"
+        },
+        "heightMap": {
+          "id": "heightMap",
+          "changed": false,
+          "scale": 1
+        }
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', function (ev) {
+      // Window tabイベントとWindow状態の紐付け
+      const tabPub = new Publisher();
+      const tabPubEditor = tabPub.subscriber();
+      tabPubEditor.subscribe("editor_open", function () {
+        document.getElementById("contour_editor").classList.add("active");
+      })
+        .subscribe("viewer_open", function () {
+          document.getElementById("contour_editor").classList.remove("active");
+        })
+
+      const tabPubViewer = tabPub.subscriber();
+      tabPubViewer.subscribe("editor_open", function () {
+        document.getElementById("viewer").classList.remove("active");
+      })
+        .subscribe("viewer_open", function () {
+          document.getElementById("viewer").classList.add("active");
+        })
+
+      // Window tabへのイベント設定
+      const tabs = new ExclusiveStateElement();
+      const editorTab = tabs.factory(
+        "#tab_contour",
+        "click",
+        function () { tabPub.publish("editor_open") }
+      )
+      const viewerTab = tabs.factory(
+        "#tab_viewer",
+        "click",
+        function () { tabPub.publish("viewer_open") }
+      )
+
+      SplineEditor.init(uiState);
+      // Spline editor setup
+      document.getElementById("button_add_spline").addEventListener(
+        "click",
+        ev => SplineEditor.addSpline(uiState),
+        false
+      )
+      document.getElementById("button_to_heightmap").addEventListener(
+        "click",
+        ev => SplineEditor.createHeightMap(uiState),
+        false
+      )
+
+      // three.jsによる3dレンダリング開始
+      setUIEventHandler(uiState);
+      Scene(uiState)();
+    }, false);
+
+  </script>
+</body>
+
+</html>

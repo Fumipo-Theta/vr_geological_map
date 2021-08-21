@@ -1,0 +1,111 @@
+body {
+     font-family: Monospace;
+     background-color: #ffffff;
+     margin: 0px;
+     font-size: 16px;
+   }
+
+input{
+  font-size: 20px;
+}
+
+
+#header {
+  background-color: #0a2d49;
+  width: 100%;
+  height: 5vh;
+  display: flex;
+}
+
+.tab {
+  border: 1px solid #ffffff;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.tab.active {
+  border: 1px solid #2196f3;
+  background-color: #2196f3;
+}
+#app_wrapper {
+  width: 100%;
+  height: 95vh;
+}
+
+.window {
+  display: none;
+  margin-top: 20px;
+  padding: 50px;
+}
+.window.active {
+  display: flex;
+}
+
+.hiddenCanvas {
+  display: none;
+}
+canvas {
+  
+}
+
+#editor_layer_wrapper{
+  position: relative;
+
+  border: 1px solid blue;
+  width: 900px;
+  height: 900px;
+}
+
+  .editor_layer{
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+#editor_controller{
+  flex: 1;
+  background-color: #eeeeee;
+  border: 1px solid #eeeeee;
+
+  height: 900px;
+  padding: 0 10px;
+  overflow: auto;
+}
+
+  .layer_controller{
+    display: flex;
+    margin: 10px 0;
+  }
+  .layer_controller.active{
+    border: 1px solid #2196f3;
+  }
+
+  .layer_controller input{
+    width: 6em;
+  }
+
+  .editor_button{
+    display: flex;
+    justify-content: center;
+    margin: 5px 10px;
+    padding: 5px 2px;
+    border: 1px solid black;
+    width: 100px;
+    cursor: pointer;
+  }
+
+  .editor_button.edit_layer:hover{
+    border: 1px solid #2196f3;
+    background-color: #2196f3;
+    color: white;
+  }
+
+  .editor_button.delete_layer:hover{
+    border: 1px solid #ff0651;
+    background-color: #ff0651;
+    color: white;
+  }
